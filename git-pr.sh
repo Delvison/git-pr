@@ -9,17 +9,7 @@ BLUE='\033[94m'
 YELLOW='\033[0;33m'
 RESET='\033[0m'
 
-# is_branch_in_remote() {
-#   GITHUB_BRANCHES=$(git ls-remote --heads)
-#   if [ -z $(echo $GITHUB_BRANCHES | grep $CURRENT_BRANCH) ]; then
-#     echo "Are you sure $CURRENT_REMOTE_CHECK is in origin?"
-#   fi
-#   if [ -z $(echo $GITHUB_BRANCHES | grep $TARGET_BRANCH) ]; then
-#     echo "Are you sure $TARGET_REMOTE_CHECK is in origin?"
-#   fi
-# }
-
-if [ ! -d .git ]; then
+if [ ! -d ".git" ]; then
   echo "Usage: $0 need to be in root of a git repo"
   exit 1
 fi
@@ -40,12 +30,12 @@ if [ -z $(which jq) ]; then
   echo "please install jq"
 fi
 
-if [ -z $GITHUB_USER ]; then
+if [ -z "$GITHUB_USER" ]; then
   echo -n "GITHUB_USERNAME > "
   read GITHUB_USER
 fi
 
-if [ -z $GITHUB_PASSWORD ]; then
+if [ -z "$GITHUB_PASSWORD" ]; then
   echo -n "GITHUB_PASSWORD > "
   read -s GITHUB_PASSWORD
   printf "\n"
@@ -57,7 +47,7 @@ ALL_COMMITS_ON_BRANCH=$(git log $TARGET_BRANCH..$CURRENT_BRANCH --pretty=%B)
 echo "TITLE (leave blank to use last commit message):"
 read TITLE
 
-if [ -z $TITLE ]; then
+if [ -z "$TITLE" ]; then
   TITLE=$LAST_COMMIT_MSG
   printf "$YELLOW(defaulted to title):$RESET "
   printf "$BLUE$TITLE$RESET \n"
@@ -66,7 +56,7 @@ fi
 echo "BODY(leave blank to use all commits on $CURRENT_BRANCH):"
 read BODY
 
-if [ -z $BODY ]; then
+if [ -z "$BODY" ]; then
   BODY=$ALL_COMMITS_ON_BRANCH
   printf "$YELLOW(defaulted to body):$RESET "
   printf "$BLUE$BODY$RESET \n"
@@ -79,12 +69,11 @@ printf "SUBMITTING: ($GREEN $TARGET_BRANCH $RESET <- $BLUE $CURRENT_BRANCH $RESE
 echo "...sending request to $url"
 printf '%80s\n' | tr ' ' -
 
+JSON=$(jq --raw-output --arg key0 'title' --arg value0 "$TITLE" --arg key1 'body' --arg value1 "$BODY" --arg key2 'base' --arg value2 "$TARGET_BRANCH" --arg key3 'head' --arg value3 "$CURRENT_BRANCH" '.  | .[$key0]=$value0 | .[$key1]=$value1 | .[$key2]=$value2 | .[$key3]=$value3 ' <<<'{}' )
+
 RES=$(curl -s -u "$GITHUB_USER:$GITHUB_PASSWORD" -X POST -H "Content-Type: application/json" \
 $url \
--d  "{ \"title\": \"$TITLE\", \
-\"body\": \"$BODY\", \
-\"base\": \"$TARGET_BRANCH\", \
-\"head\": \"$CURRENT_BRANCH\"}")
+-d "$JSON")
 
 PR_URL=$(echo $RES| jq '.html_url'| sed 's/"//g') 
 
